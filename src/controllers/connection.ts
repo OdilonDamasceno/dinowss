@@ -1,42 +1,153 @@
-import { v4 } from "https://deno.land/std@0.94.0/uuid/mod.ts";
-import { faker } from "https://deno.land/x/deno_faker@v1.0.0/mod.ts";
-import { User } from "../models/User.ts";
-import { WebSocketClient } from "https://deno.land/x/websocket@v0.1.1/mod.ts";
+import { v4 } from "../../deps.ts";
+import { Bson } from "../../deps.ts";
+import { bcrypt } from "../../deps.ts";
+import { users } from "../db/db.ts";
+import { WebSocketClient, WebSocketServer } from "../../deps.ts";
+import { env } from "../../deps.ts";
+import { create, verify } from "../../deps.ts";
+import { UserSchema } from "../db/models/User.ts";
 
-const users: Array<User> = [];
+async function generateToken(params = {}) {
+  return await create({ alg: "HS512", typ: "JWT" }, params, env.JWT);
+}
 
-export function connection(ws: WebSocketClient) {
-  const userId = v4.generate();
+export function connection(ws: WebSocketClient, wss: WebSocketServer) {
+  let user: UserSchema | undefined;
 
-  users.push({
-    "id": userId,
-    "email": faker.internet.email(),
-    "ws": ws,
-  });
-
-  ws.send(`Your id is: ${userId}`);
-
-  ws.on("message", (message: string) => {
+  ws.on("message", async (data: string) => {
     try {
-      const json = JSON.parse(message);
+      const json: Record<string, string> = JSON.parse(data);
       switch (json.type) {
-        case "new": {
-          const to: User | undefined = users.find((rec) => {
-            if (rec.id === json.to) return rec;
-          });
-
-          if (to) {
-            to.ws.send(`{"from": "${json.from}", "message":"${json.message}"}`);
+        case "message": {
+          if (wss.eventNames().find((to) => to === json.to)) {
+            wss.emit(
+              `${json.to}`,
+              JSON.stringify({
+                from: json.from,
+                message: json.message,
+                at: Date.now(),
+              }),
+            );
+            break;
           }
+          await users.updateOne({ socketId: json.to }, {
+            $push: {
+              pending: {
+                from: json.from,
+                message: json.message,
+                at: Date.now(),
+              },
+            },
+          });
 
           break;
         }
+        case "join": {
+          break;
+        }
+        case "login": {
+          user = await users.findOne({ userName: json.userName });
 
+          if (!user) {
+            ws.send(`{"error":"User not found"}`);
+            break;
+          }
+
+          if (!await bcrypt.compare(json.password, user.password)) {
+            ws.send(`{"error": "Invalid password"}`);
+            break;
+          }
+
+          wss.addListener(`${user.socketId}`, (data) => ws.send(data));
+
+          user.password = "";
+          const pending = user.pending;
+          user.pending = [];
+
+          ws.send(JSON.stringify({
+            user,
+            type: "auth",
+            socketId: user.socketId,
+            token: await generateToken({ id: user }),
+          }));
+
+          pending.forEach((message) => {
+            ws.send(JSON.stringify(message));
+          });
+
+          users.updateOne({ _id: user._id }, {
+            $set: { pending: [], isOnline: true },
+          });
+
+          break;
+        }
+        case "connect": {
+          const payload = await verify(json.token, env.JWT, "HS512");
+          if (!json.token) {
+            ws.send(`{"error":"No token provided"}`);
+            break;
+          }
+
+          if (payload.id == json.id) {
+            await users.updateOne({ _id: json.id }, {
+              $set: {
+                isOnline: true,
+              },
+            });
+          }
+
+          wss.addListener(`${json.socketId}`, (data) => ws.send(data));
+
+          const pending = user?.pending;
+          pending?.forEach((message) => {
+            ws.send(JSON.stringify(message));
+          });
+
+          users.updateOne({ _id: user?._id }, {
+            $set: { pending: [] },
+          });
+
+          break;
+        }
+        case "register": {
+          if (!await users.findOne({ userName: json.userName })) {
+            const socketId = v4.generate();
+            await users.insertOne({
+              userName: json.userName,
+              isOnline: !ws.isClosed,
+              socketId: socketId,
+              password: await bcrypt.hash(json.password),
+            });
+          } else {
+            ws.send(`{"error": "User already taken"}`);
+            break;
+          }
+          ws.emit(
+            "message",
+            JSON.stringify({
+              type: "login",
+              userName: json.userName,
+              password: json.password,
+            }),
+          );
+          break;
+        }
         default:
           break;
       }
     } catch (error) {
-      ws.send(`{ "error": "${error}" }`);
+      ws.send(`{"error": "${error}"}`);
+    }
+  });
+
+  ws.on("close", () => {
+    if (user) {
+      users.updateOne({ _id: new Bson.ObjectID(user._id) }, {
+        $set: {
+          isOnline: false,
+        },
+      });
+      wss.removeAllListeners(user.socketId);
     }
   });
 }
