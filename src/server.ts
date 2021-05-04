@@ -1,15 +1,11 @@
-import { parse } from "https://deno.land/std/flags/mod.ts";
+import { parse } from "../deps.ts";
 import { connection } from "./controllers/connection.ts";
-import { WebSocketServer } from "https://deno.land/x/websocket@v0.1.1/mod.ts";
+import { WebSocketClient, WebSocketServer } from "../deps.ts";
 
 const { args } = Deno;
-const DEFAULT_WSSPORT = 8001;
-const PORT = parse(args).port;
-const WSS = parse(args).wss;
-const WS = WSS ? Number(PORT) : DEFAULT_WSSPORT;
+const WSS = parse(args).wss ?? 8001;
+const wss = new WebSocketServer(WSS);
 
-const wss = new WebSocketServer(WS);
+wss.on("connection", (ws: WebSocketClient) => connection(ws, wss));
 
-wss.on("connection", connection);
-
-console.log("Server running on port", WS);
+console.log("WebSocket running on port", WSS);
