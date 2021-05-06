@@ -31,9 +31,15 @@ jobs:
         uses: denoland/setup-deno@main
         with:
           deno-version: v1.x 
+        env:
+          JWT: IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj
 
       - name: Cache Dependencies
         run: deno cache deps.ts --unstable
+        env:
+          JWT: IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj
 
       - name: Run Tests
         run: deno test -A --unstable
+        env:
+          JWT: IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj
