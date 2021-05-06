@@ -18,15 +18,17 @@ deno run --allow-net --allow-read src/server.ts
 
 ### Connect to server
 
-You'll need a websocket client to connect. You can use any one, in this example will be used [websocat](https://github.com/vi/websocat)
+You'll need a websocket client to connect. You can use any one, in this example will be used [wscat](https://www.npmjs.com/package/wscat)
 
 ```bash
-websocat ws://127.0.0.1:8001/ws
+wscat ws://127.0.0.1:8001/ws
 ```
+
+See [Usage](https://github.com/OdilonDamasceno/dinowss/wiki/Usage) for how to use
 
 ## Wiki
 
-_TODO_
+See [Wiki](https://github.com/OdilonDamasceno/dinowss/wiki) for details
 
 ## Meta
 
