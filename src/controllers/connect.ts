@@ -35,4 +35,5 @@ export async function connect(
   users.updateOne({ _id: user._id }, {
     $set: { pending: [] },
   });
+  return true;
 }
