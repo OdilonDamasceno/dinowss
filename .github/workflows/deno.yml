@@ -18,7 +18,7 @@ jobs:
   test:
     runs-on: ${{ matrix.os }} # runs a test on Ubuntu, Windows and macOS
     env:
-      JWT: IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj
+      JWT: "IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj"
 
     strategy:
       matrix:
