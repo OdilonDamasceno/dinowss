@@ -1,5 +1,7 @@
 # Dino WebSocket Server
 
+[![Deno](https://github.com/OdilonDamasceno/dinowss/actions/workflows/deno.yml/badge.svg?branch=master)](https://github.com/OdilonDamasceno/dinowss/actions/workflows/deno.yml)
+
 ## About
 
 This project aims to be an implementation of a websocket server for chats and channels like Discord using Deno. But simpler
