@@ -17,6 +17,8 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }} # runs a test on Ubuntu, Windows and macOS
+    env:
+      JWT: IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj
 
     strategy:
       matrix:
@@ -30,16 +32,10 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@main
         with:
-          deno-version: v1.x 
-        env:
-          JWT: IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj
+          deno-version: v1.x
 
       - name: Cache Dependencies
         run: deno cache deps.ts --unstable
-        env:
-          JWT: IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj
 
       - name: Run Tests
         run: deno test -A --unstable
-        env:
-          JWT: IHzQXAn8BWW8tANV74CQlsZ80T6mdj7aDDjQneqj
