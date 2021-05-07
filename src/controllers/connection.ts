@@ -19,6 +19,7 @@ export function connection(ws: WebSocketClient) {
           break;
         }
         case "join": {
+          // TODO: Implement channels
           break;
         }
         case "login": {
